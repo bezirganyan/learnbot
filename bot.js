@@ -11,7 +11,7 @@ if (!process.env.token) {
 
 
 var controller = Botkit.slackbot({
-    //debug: true,
+    debug: true,
     clientId: process.env.clientId,
     clientSecret: process.env.clientSecret,
     scopes: ['bot'],
@@ -57,7 +57,7 @@ MongoClient.connect(url, function(err, db) {
                                     'first_name': user.profile.first_name,
                                     'last_name': user.profile.last_name,
                                     'email': user.profile.email,
-                                    'type': 'admin', //user.is_admin ? "admin" : "user",
+                                    'type': user.is_admin ? "admin" : "user",
                                     'username': user.name
                             })
                         }
@@ -109,7 +109,7 @@ controller.hears(['hello', 'hi'], 'direct_message,direct_mention,mention', funct
                                     'first_name': currentUser.profile.first_name,
                                     'last_name': currentUser.profile.last_name,
                                     'email': currentUser.profile.email,
-                                    'type': 'admin', //currentUser.is_admin ? "admin" : "user",
+                                    'type': currentUser.is_admin ? "admin" : "user",
                                     'username': currentUser.name
                                 }, function (err, response) {
                                     if (err) {
@@ -155,6 +155,17 @@ controller.hears(['what\'s up', 'wazzup'], 'direct_message,direct_mention,mentio
     bot.reply(message, 'Nth much, waddup with you, bruh? Here\'s some info from ur dashboard: \n (info)');
 })
 
+
+controller.hears(['who am i', 'whoami'], 'direct_message,direct_mention,mention', function(bot, message) {
+    bot.reply(message, 'You are the best! ^^')
+    MongoClient.connect(url, function(err, db) {
+        db.collection('users').findOne({slack_id: message.user}, function (err, res) {
+            if (err) throw err
+            bot.reply(message, 'You are ' + res.type + ' ' + res.first_name + ' ' + res.last_name + '. Your username is ' + res.username + ' and your email is ' + res.email)
+        })
+    })
+})
+
 /*controller.hears(['set grade for assignment (.*) of course (.*) for student (.*)'], 'direct_message,direct_mention,mention', function (bot, message) {
     var assignment_name = message.match[1];
     var course_id = message.match[2];
@@ -172,7 +183,7 @@ controller.hears(['set privilege for (.*) to (.*)'], 'direct_message,direct_ment
             if (err) {
                 throw err;
             }
-            else if (user.type === "admin") {
+            else if (user && user.type === "admin") {
                 var username = message.match[1];
                 var type = message.match[2];
                 console.log(type)
@@ -182,9 +193,13 @@ controller.hears(['set privilege for (.*) to (.*)'], 'direct_message,direct_ment
                             throw err;
                             bot.reply(message, 'Ooops... Something went wrong :(')
                         }
-                        if(res) {
+                        console.log(res)
+                        if(res.result.n > 0) {
                             console.log(res);
                             bot.reply(message, 'Success! Set privilege for ' + username + ' to ' + type)
+                        }
+                        else {
+                            bot.reply(message, 'Cannot find specified user' )
                         }
                     })
                 } else {
@@ -293,10 +308,15 @@ controller.hears(['set instructor (.*) for course with id (.*)'], 'direct_messag
                     else if (res) {
                         if (res.type === "instructor") {
                         var course_id = message.match[2];
-                        db.collection('courses').findOneAndUpdate({course_id: course_id}, {$set: {instructor: instructor_name}}, function (err, res) {
+                        db.collection('courses').updateOne({course_id: course_id}, {$set: {instructor: instructor_name}}, function (err, res) {
                             if (err) throw err;
-                            if (res.lastErrorObject.updatedExisting) {
-                                bot.reply(message, 'Set ' + instructor_name + ' as instructor for ' + course_id)
+                            if (res.result.n > 0) {
+                                    db.collection('users').updateOne ({slack_id: user.slack_id}, {$push: {courses: course_id}}, function (err, res) {
+                                        if (err) throw err;
+                                        else if (res) {
+                                            bot.reply(message, 'Set ' + instructor_name + ' as instructor for ' + course_id)
+                                        }
+                                    })
                             }
                             else {
                                 bot.reply(message, 'No course with specified id')

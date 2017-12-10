@@ -12,7 +12,6 @@
     "botkit": "^0.6.6"
   },
   "devDependencies": {
-    "forever": "^0.15.3",
     "mongodb": "^2.2.33",
     "nodemon": "^1.12.1"
   }
