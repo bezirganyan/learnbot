@@ -1,7 +1,5 @@
 var Botkit = require('botkit');
-var os = require('os');
 var MongoClient = require('mongodb').MongoClient;
-var assert = require('assert');
 var ObjectId = require('mongodb').ObjectID;
 
 if (!process.env.token) {
@@ -57,7 +55,7 @@ MongoClient.connect(url, function(err, db) {
                             'first_name': user.profile.first_name,
                             'last_name': user.profile.last_name,
                             'email': user.profile.email,
-                            'type': 'admin', //user.is_admin ? "admin" : "user",
+                            'type': 'admin', //user.is_admin ? 'admin' : 'user',
                             'username': user.name
                         })
                     } else {
@@ -86,6 +84,9 @@ MongoClient.connect(url, function(err, db) {
 
 
 // For future use
+
+// TODO: Divide into modules, for better readablity
+// TODO: Add emojis :D
 // TODO: Add slash commands and user tag recognition
 // TODO: Add 'wazzup' command
 // TODO: Add 'help' command
@@ -103,7 +104,6 @@ controller.hears(['hello', 'hi'], 'direct_message,direct_mention,mention', funct
             if (err) {
                 throw err;
             }
-            assert.equal(null, err);
             db.collection('users').findOne({ slack_id: currentUser.id }, function(err, exists) {
                 if (exists) {
                     bot.reply(message, 'Hello, ' + currentUser.name + '!');
@@ -114,7 +114,7 @@ controller.hears(['hello', 'hi'], 'direct_message,direct_mention,mention', funct
                             'first_name': currentUser.profile.first_name,
                             'last_name': currentUser.profile.last_name,
                             'email': currentUser.profile.email,
-                            'type': currentUser.is_admin ? "admin" : "user",
+                            'type': currentUser.is_admin ? 'admin' : 'user',
                             'username': currentUser.name
                         }, function(err, response) {
                             if (err) {
@@ -143,6 +143,10 @@ controller.hears(['hello', 'hi'], 'direct_message,direct_mention,mention', funct
         }
     });
 })
+
+controller.hears(['who are you', 'what is your name'], 'direct_message,direct_mention,mention', function(bot, message) {
+    bot.reply(message, ':robot_face: I am a bot named <@' + bot.identity.name + '>. I will be helping you with your studies.');
+});
 
 controller.hears(['who am i', 'whoami'], 'direct_message,direct_mention,mention', function(bot, message) {
     bot.reply(message, 'You are the best! ^^')
@@ -214,6 +218,8 @@ controller.hears(['create course with id (.*) with name (.*)'], 'direct_message,
                     }
 
                 })
+            } else {
+                bot.reply(message, "Error. You are not privileged enough to do this action!")
             }
         })
     })
@@ -235,9 +241,10 @@ controller.hears(['set instructor (.*) for course with id (.*)'], 'direct_messag
                             db.collection('courses').updateOne({ course_id: course_id }, { $set: { instructor: instructor_name } }, function(err, res) {
                                 if (err) throw err;
                                 if (res.result.n > 0) {
-                                    db.collection('users').updateOne({ slack_id: user.slack_id }, { $push: { courses: course_id } }, function(err, res) {
+                                    db.collection('users').updateOne({ username: instructor_name }, { $push: { courses: { course_id: course_id } } }, function(err, res) {
                                         if (err) throw err;
                                         else if (res) {
+                                            console.log(res)
                                             bot.reply(message, 'Set ' + instructor_name + ' as instructor for ' + course_id)
                                         }
                                     })
@@ -252,6 +259,8 @@ controller.hears(['set instructor (.*) for course with id (.*)'], 'direct_messag
                         bot.reply(message, 'No user with specified username exists')
                     }
                 })
+            } else {
+                bot.reply(message, "Error. You are not privileged enough to do this action!")
             }
         })
     })
@@ -262,7 +271,7 @@ controller.hears(['register for course with id (.*)'], 'direct_message,direct_me
         if (err) throw err
         db.collection('users').findOne({ slack_id: message.user }, function(err, user) {
             if (err) throw err;
-            else if (user && (user.type === 'student' || user.type === 'admin')) {
+            else if (user && (user.type === 'student')) {
                 var course_id = message.match[1];
                 db.collection('courses').findOne({ course_id: course_id }, function(err, res) {
                     if (err) throw err;
@@ -274,10 +283,16 @@ controller.hears(['register for course with id (.*)'], 'direct_message,direct_me
                             }
                         } else {
                             db.collection('courses').updateOne({ course_id: course_id }, { $push: { students: user.slack_id } }, function(err, res) {
-
                                 if (err) throw err;
                                 else {
-                                    db.collection('users').updateOne({ slack_id: user.slack_id }, { $push: { courses: { course_id: course_id, assignments: [] } } }, function(err, res) {
+                                    db.collection('users').updateOne({ slack_id: user.slack_id }, {
+                                        $push: {
+                                            courses: {
+                                                course_id: course_id,
+                                                assignments: []
+                                            }
+                                        }
+                                    }, function(err, res) {
                                         if (err) throw err;
                                         else {
                                             bot.reply(message, 'Registered you for course ' + course_id + '. Welcome!')
@@ -290,6 +305,8 @@ controller.hears(['register for course with id (.*)'], 'direct_message,direct_me
                         bot.reply(message, 'No such course')
                     }
                 })
+            } else {
+                bot.reply(message, "Sorry, only students can register for courses! If you are an instructor, ask admin to set you for course.")
             }
         })
     })
@@ -304,8 +321,7 @@ controller.hears(['set assignment with name (.*) with deadline (.*) for (.*)'], 
         if (err) throw err;
         db.collection('users').findOne({ slack_id: message.user }, function(err, user) {
             if (err) throw err;
-            // TODO: restrict student from setting assignment :D
-            else if ((user.type === "instructor" || user.type === "student" || user.type === "admin") && findCourseById(user.courses, course_id) !== -1) {
+            else if ((user.type === "instructor") && findCourseById(user.courses, course_id) !== -1) {
                 db.collection('courses').updateOne({ course_id: course_id }, {
                     $push: {
                         assignments: {
@@ -320,36 +336,24 @@ controller.hears(['set assignment with name (.*) with deadline (.*) for (.*)'], 
                         db.collection('courses').findOne({ course_id: course_id }, function(err, course) {
                             if (err) throw err;
                             else if (course) {
-                                console.log(message)
                                 course.students.map(student => {
                                     message.user = student;
-                                    console.log(student)
                                     bot.say({
                                         text: "Hey! You just got an assignment " + assignment_name + " from " + course.course_name + " due " + deadline,
-                                        channel: student // a valid slack channel, group, mpim, or im ID
+                                        channel: student
                                     })
-                                    //bot.reply(message, "Hey! You just got an assignment " + assignment_name + " from " + course.course_name + " due " + deadline)
                                 })
                             }
                         })
                     }
                 })
             } else {
-                bot.reply(message, "You can't complete this action (make sure you are registered in this course)")
+                bot.reply(message, "You can't complete this action unless you are instructor (make sure you are registered in this course)")
             }
 
         })
     })
 })
-
-const findCourseById = (courses, course_id) => {
-    for (var i = 0; i < courses.length; i++) {
-        if (courses[i].course_id === course_id) {
-            return i;
-        }
-    }
-    return -1
-}
 
 controller.hears(['set grade (.*) for assignment (.*) for student (.*) of course (.*)'], 'direct_message,direct_mention,mention', function(bot, message) {
     var grade = message.match[1];
@@ -362,43 +366,45 @@ controller.hears(['set grade (.*) for assignment (.*) for student (.*) of course
         db.collection('users').findOne({ slack_id: message.user }, function(err, user) {
             console.log(user.courses, course_id, findCourseById(user.courses, course_id))
             if (err) throw err;
-
-            // TODO: restrict student from setting grade :D
-            else if ((user.type === "instructor" || user.type === "student" || user.type === "admin") && findCourseById(user.courses, course_id) !== -1) {
+            else if ((user.type === "instructor") && findCourseById(user.courses, course_id) !== -1) {
                 db.collection('users').findOne({ username: student_username }, function(err, res) {
+                    console.log(res)
                     if (err) throw err;
-                    else if (res.type === "student" || res.type === "admin") {
+                    else if (res && (res.type === "student")) {
                         console.log('here')
-                        db.collection('users').updateOne({ slack_id: res.slack_id, 'courses.course_id': course_id }, { $push: { 'courses.$.assignments': { 'assignment_name': assignment_name, 'grade': grade } } }, function(err, res) {
+                        db.collection('users').updateOne({ slack_id: res.slack_id, 'courses.course_id': course_id }, {
+                            $push: {
+                                'courses.$.assignments': {
+                                    'assignment_name': assignment_name,
+                                    'grade': grade
+                                }
+                            }
+                        }, function(err, res) {
                             if (err) throw err
-                            console.log(res)
-                        })
-                    }
-                    /*, function(err, res) {
-                                        else {
-                                            bot.reply(message, 'Added assignment ' + assignment_name + ' for ' + course_id + ' with deadline ' + deadline)
-                                            db.collection('courses').findOne({ course_id: course_id }, function(err, course) {
-                                                if (err) throw err;
-                                                else if (course) {
-                                                    console.log(message)
-                                                    course.students.map(student => {
-                                                        message.user = student;
-                                                        console.log(student)
-                                                        bot.say({
-                                                            text: "Hey! You just got an assignment " + assignment_name + " from " + course.course_name + " due " + deadline,
-                                                            channel: student // a valid slack channel, group, mpim, or im ID
-                                                        })
-                                                        //bot.reply(message, "Hey! You just got an assignment " + assignment_name + " from " + course.course_name + " due " + deadline)
-                                                    })
-                                                }
+                            else {
+                                bot.reply(message, 'Set grade for assignment ' + assignment_name + ' for student ' + student_username + ' of course ' + course_id)
+                                db.collection('courses').findOne({ course_id: course_id }, function(err, course) {
+                                    if (err) throw err;
+                                    else if (course) {
+                                        console.log(message)
+                                        course.students.map(student => {
+                                            message.user = student;
+                                            console.log(student)
+                                            bot.say({
+                                                text: "Hey! You just got your grade for assignment " + assignment_name + " of " + course.course_name + '. It is ' + grade,
+                                                channel: student
                                             })
-                                        }
-                                    })*/
-                    else {
-                        bot.reply(message, "You can't complete this action (make sure you are registered in this course)")
+                                        })
+                                    }
+                                })
+                            }
+                        })
+                    } else {
+                        bot.reply(message, "Could not find student with specified username")
                     }
-
                 })
+            } else {
+                bot.reply(message, "You can't complete this action unless you are instructor (make sure you are registered in this course)")
             }
         })
     })
@@ -411,38 +417,20 @@ controller.hears(['get grade for assignment (.*) of course (.*)'], 'direct_messa
     MongoClient.connect(url, function(err, db) {
         if (err) throw err;
         db.collection('users').findOne({ slack_id: message.user }, function(err, user) {
-            console.log(user.courses, course_id, findCourseById(user.courses, course_id))
             if (err) throw err;
-            // TODO: restrict student from setting grade :D
-            else if ((user.type === "instructor" || user.type === "student" || user.type === "admin") && findCourseById(user.courses, course_id) !== -1) {
-                console.log('here')
+            else if ((user.type === "student") && findCourseById(user.courses, course_id) !== -1) {
                 db.collection('users').findOne({ slack_id: user.slack_id, 'courses.course_id': course_id }, function(err, res) {
                     if (err) throw err;
-                    else if (res.type === "student" || res.type === "admin") {
-                        res.courses.filter((item) => item.course_id === course_id && (item.assignments.map(((assignment) => assignment.assignment_name === assignment_name && bot.reply(message, assignment.grade)))))
+                    else if (res) {
+                        res.courses.filter((course) => course.course_id === course_id && (course.assignments.map(((assignment) => assignment.assignment_name === assignment_name && bot.reply(message, assignment.grade)))))
                     }
                 })
+            } else {
+                bot.reply(message, "You are not registered in this course")
             }
         })
     })
 })
-
-controller.hears(['call me (.*)', 'my name is (.*)'], 'direct_message,direct_mention,mention', function(bot, message) {
-    var name = message.match[1];
-    controller.storage.users.get(message.user, function(err, user) {
-        if (!user) {
-            user = {
-                id: message.user,
-            };
-        }
-        user.name = name;
-        controller.storage.users.save(user, function(err, id) {
-            bot.reply(message, 'Got it. I will call you ' + user.name + ' from now on.');
-        });
-    });
-});
-
-
 
 controller.hears(['shutdown'], 'direct_message,direct_mention,mention', function(bot, message) {
 
@@ -478,34 +466,11 @@ controller.hears(['shutdown'], 'direct_message,direct_mention,mention', function
     })
 })
 
-
-controller.hears(['who are you', 'what is your name'],
-    'direct_message,direct_mention,mention',
-    function(bot, message) {
-
-        var hostname = os.hostname();
-        var uptime = formatUptime(process.uptime());
-
-        bot.reply(message,
-            ':robot_face: I am a bot named <@' + bot.identity.name +
-            '>. I will be helping you with your studies.');
-
-    });
-
-function formatUptime(uptime) {
-    var unit = 'second';
-    if (uptime > 60) {
-        uptime = uptime / 60;
-        unit = 'minute';
+const findCourseById = (courses, course_id) => {
+    for (var i = 0; i < courses.length; i++) {
+        if (courses[i].course_id === course_id) {
+            return i;
+        }
     }
-    if (uptime > 60) {
-        uptime = uptime / 60;
-        unit = 'hour';
-    }
-    if (uptime != 1) {
-        unit = unit + 's';
-    }
-
-    uptime = uptime + ' ' + unit;
-    return uptime;
+    return -1
 }
