@@ -55,7 +55,7 @@ MongoClient.connect(url, function(err, db) {
                             'first_name': user.profile.first_name,
                             'last_name': user.profile.last_name,
                             'email': user.profile.email,
-                            'type': 'admin', //user.is_admin ? 'admin' : 'user',
+                            'type': user.is_admin ? 'admin' : 'user',
                             'username': user.name
                         })
                     } else {
@@ -63,7 +63,6 @@ MongoClient.connect(url, function(err, db) {
                     }
                 }
             })
-            //db.close())
         })
     })
 })
