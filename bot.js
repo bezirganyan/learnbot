@@ -22,11 +22,13 @@ var bot = controller.spawn({
 
 var url = "mongodb://localhost:27017/mydb";
 
+// WARNING: A very complicated code follows. Be careful not to lose your sanity trying to understand it! :D
+
 
 MongoClient.connect(url, function(err, db) {
     if (err) throw err;
-    db.collection("users").drop();
-    db.collection("courses").drop();
+    //db.collection("users").drop();
+    //db.collection("courses").drop();
     db.createCollection("users", function(err, res) {
         if (err) throw err;
         console.log("Collection users created!");
@@ -260,7 +262,7 @@ controller.hears(['register for course with id (.*)'], 'direct_message,direct_me
         if (err) throw err
         db.collection('users').findOne({ slack_id: message.user }, function(err, user) {
             if (err) throw err;
-            else if (user && user.type === 'student') {
+            else if (user && (user.type === 'student' || user.type === 'admin')) {
                 var course_id = message.match[1];
                 db.collection('courses').findOne({ course_id: course_id }, function(err, res) {
                     if (err) throw err;
@@ -275,7 +277,7 @@ controller.hears(['register for course with id (.*)'], 'direct_message,direct_me
 
                                 if (err) throw err;
                                 else {
-                                    db.collection('users').updateOne({ slack_id: user.slack_id }, { $push: { courses: {id: course_id} } }, function(err, res) {
+                                    db.collection('users').updateOne({ slack_id: user.slack_id }, { $push: { courses: { course_id: course_id, assignments: [] } } }, function(err, res) {
                                         if (err) throw err;
                                         else {
                                             bot.reply(message, 'Registered you for course ' + course_id + '. Welcome!')
@@ -303,7 +305,7 @@ controller.hears(['set assignment with name (.*) with deadline (.*) for (.*)'], 
         db.collection('users').findOne({ slack_id: message.user }, function(err, user) {
             if (err) throw err;
             // TODO: restrict student from setting assignment :D
-            else if ((user.type === "instructor" || user.type === "student") && user.courses.indexOf(course_id) !== -1) {
+            else if ((user.type === "instructor" || user.type === "student" || user.type === "admin") && findCourseById(user.courses, course_id) !== -1) {
                 db.collection('courses').updateOne({ course_id: course_id }, {
                     $push: {
                         assignments: {
@@ -340,57 +342,90 @@ controller.hears(['set assignment with name (.*) with deadline (.*) for (.*)'], 
     })
 })
 
-controller.hears(['set grade for assignment (.*)  for student (.*) of course (.*)'], 'direct_message,direct_mention,mention', function (bot, message) {
-    var assignment_name = message.match[1];
-    var course_id = message.match[2];
+const findCourseById = (courses, course_id) => {
+    for (var i = 0; i < courses.length; i++) {
+        if (courses[i].course_id === course_id) {
+            return i;
+        }
+    }
+    return -1
+}
+
+controller.hears(['set grade (.*) for assignment (.*) for student (.*) of course (.*)'], 'direct_message,direct_mention,mention', function(bot, message) {
+    var grade = message.match[1];
+    var assignment_name = message.match[2];
     var student_username = message.match[3];
+    var course_id = message.match[4];
 
     MongoClient.connect(url, function(err, db) {
         if (err) throw err;
         db.collection('users').findOne({ slack_id: message.user }, function(err, user) {
+            console.log(user.courses, course_id, findCourseById(user.courses, course_id))
             if (err) throw err;
+
             // TODO: restrict student from setting grade :D
-            else if ((user.type === "instructor" || user.type === "student") && user.courses.indexOf(course_id) !== -1) {
-                db.collection('users').findOne({ username: student_username }, function (err, res) {
+            else if ((user.type === "instructor" || user.type === "student" || user.type === "admin") && findCourseById(user.courses, course_id) !== -1) {
+                db.collection('users').findOne({ username: student_username }, function(err, res) {
                     if (err) throw err;
-                    else if (res.type === "student") {
-                        var index;
-                        for (var i = 0; i < res.courses.length; i++) {
-                            if (res.courses[i].course_id === course_id) {
-                                index = i;
-                            }
-                        }
-                        console.log(index);
-                        //db.collection('users').updateOne({username: student_username}, {$push : {courses}})
-                    }
-                })/*, function(err, res) {
-                    else {
-                        bot.reply(message, 'Added assignment ' + assignment_name + ' for ' + course_id + ' with deadline ' + deadline)
-                        db.collection('courses').findOne({ course_id: course_id }, function(err, course) {
-                            if (err) throw err;
-                            else if (course) {
-                                console.log(message)
-                                course.students.map(student => {
-                                    message.user = student;
-                                    console.log(student)
-                                    bot.say({
-                                        text: "Hey! You just got an assignment " + assignment_name + " from " + course.course_name + " due " + deadline,
-                                        channel: student // a valid slack channel, group, mpim, or im ID
-                                    })
-                                    //bot.reply(message, "Hey! You just got an assignment " + assignment_name + " from " + course.course_name + " due " + deadline)
-                                })
-                            }
+                    else if (res.type === "student" || res.type === "admin") {
+                        console.log('here')
+                        db.collection('users').updateOne({ slack_id: res.slack_id, 'courses.course_id': course_id }, { $push: { 'courses.$.assignments': { 'assignment_name': assignment_name, 'grade': grade } } }, function(err, res) {
+                            if (err) throw err
+                            console.log(res)
                         })
                     }
-                })*/
-            } else {
-                bot.reply(message, "You can't complete this action (make sure you are registered in this course)")
-            }
+                    /*, function(err, res) {
+                                        else {
+                                            bot.reply(message, 'Added assignment ' + assignment_name + ' for ' + course_id + ' with deadline ' + deadline)
+                                            db.collection('courses').findOne({ course_id: course_id }, function(err, course) {
+                                                if (err) throw err;
+                                                else if (course) {
+                                                    console.log(message)
+                                                    course.students.map(student => {
+                                                        message.user = student;
+                                                        console.log(student)
+                                                        bot.say({
+                                                            text: "Hey! You just got an assignment " + assignment_name + " from " + course.course_name + " due " + deadline,
+                                                            channel: student // a valid slack channel, group, mpim, or im ID
+                                                        })
+                                                        //bot.reply(message, "Hey! You just got an assignment " + assignment_name + " from " + course.course_name + " due " + deadline)
+                                                    })
+                                                }
+                                            })
+                                        }
+                                    })*/
+                    else {
+                        bot.reply(message, "You can't complete this action (make sure you are registered in this course)")
+                    }
 
+                })
+            }
         })
     })
 })
 
+controller.hears(['get grade for assignment (.*) of course (.*)'], 'direct_message,direct_mention,mention', function(bot, message) {
+    var assignment_name = message.match[1];
+    var course_id = message.match[2];
+
+    MongoClient.connect(url, function(err, db) {
+        if (err) throw err;
+        db.collection('users').findOne({ slack_id: message.user }, function(err, user) {
+            console.log(user.courses, course_id, findCourseById(user.courses, course_id))
+            if (err) throw err;
+            // TODO: restrict student from setting grade :D
+            else if ((user.type === "instructor" || user.type === "student" || user.type === "admin") && findCourseById(user.courses, course_id) !== -1) {
+                console.log('here')
+                db.collection('users').findOne({ slack_id: user.slack_id, 'courses.course_id': course_id }, function(err, res) {
+                    if (err) throw err;
+                    else if (res.type === "student" || res.type === "admin") {
+                        res.courses.filter((item) => item.course_id === course_id && (item.assignments.map(((assignment) => assignment.assignment_name === assignment_name && bot.reply(message, assignment.grade)))))
+                    }
+                })
+            }
+        })
+    })
+})
 
 /*
 controller.hears(['call me (.*)', 'my name is (.*)'], 'direct_message,direct_mention,mention', function(bot, message) {
