@@ -20,19 +20,19 @@ If you did everything correctly, now your bot should be up on your slack workspa
 
 ## Functionality
 ### Commands  
-__who am i__ : returns your information  
-__set privilege for \[user\] to \[admin\]__ : Changes the role of te student (must be run by admin)  
-__create course with id \[course id\] with name \[course name\]__ : creates course by given course name (must be run by admin)  
-__set instructor \[instructor name\] for course with id \[course id\]__ : stes instructor for a course (must be run by admin)  
-__register for course with id \[course id\]__ : registers for a course (student)  
-__set assignment with name \[assignment name\] with deadline \[deadline\] for \[course id\]__ : assignes an assignement (Instructor, student(TA))  
-__set grade for assignment \[assignement name\] for student \[student username\] of course \[course id\]__ : grades an assignement (Instructor, student(TA))  
+`who am i` : returns your information  
+`set privilege for [user] to [admin]` : Changes the role of te student (must be run by admin)  
+`create course with id [course id] with name [course name]` : creates course by given course name (must be run by admin)  
+`set instructor [instructor name] for course with id [course id]` : stes instructor for a course (must be run by admin)  
+`register for course with id [course id]` : registers for a course (student)  
+`set assignment with name [assignment name] with deadline [deadline] for [course id]` : assignes an assignement (Instructor, student(TA))  
+`set grade for assignment [assignement name] for student [student username] of course [course id]` : grades an assignement (Instructor, student(TA))  
 
 More commands are coming...
 
 ## Authors
 
-Grigor Bezirganyan
-Tigran Sedrakayan
-Hovhannes Margaryan
-Nana Sahakyan
+Grigor Bezirganyan,
+Tigran Sedrakayan,
+Hovhannes Margaryan,
+Nana Sahakyan,
