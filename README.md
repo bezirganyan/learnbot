@@ -21,19 +21,19 @@ If you did everything correctly, now your bot should be up and running on your S
 ## Functionality
 ### Commands
 
-The following commands are currently in the stage of development. This means that they are unstable, as corner cases are not completely handled and, thus, may cause crashes. If you have noticed such bug, please feel free to open an issue.
+The following commands are currently in the stage of development. This means that they are unstable, as corner cases are not completely handled and, thus, may cause crashes. If you have noticed such bug, please feel free to open an issue.  
 
-`hello`, `hi`: Greetings :). Also, initializes user in the database, if he is not already there.
-`who am i`, `whoami` : Returns your information
-`who are you`, `what is your name` : Return information about the bot
+`hello`, `hi`: Greetings :). Also, initializes user in the database, if he is not already there.  
+`who am i`, `whoami` : Returns your information  
+`who are you`, `what is your name` : Return information about the bot  
 `set privilege for [username] to [admin, instructor, student]` : Changes the role of the user (admin only)  
 `create course with id [course id] with name [course name]` : Creates course with given course id and name (admin only)  
-`set instructor [instructor name] for course with id [course id]` : Sets the instructor for a course (admin only) 
+`set instructor [instructor name] for course with id [course id]` : Sets the instructor for a course (admin only)  
 `register for course with id [course id]` : Registers student for a course (student only)  
 `set assignment with name [assignment name] with deadline [deadline] for [course id]` : Assignes an assignement (instructor only)  
 `set grade [grade] for assignment [assignement name] for student [student username] of course [course id]` : Grades an assignement (instructor only)  
-`get grade for assignment [assignment name] of course [course id]` : Get grade of an assignment (student only)
-`shutdown` : Shuts the bot down (admin only)
+`get grade for assignment [assignment name] of course [course id]` : Get grade of an assignment (student only)  
+`shutdown` : Shuts the bot down (admin only)  
 
 More commands are coming...
 
