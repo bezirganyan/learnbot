@@ -1,20 +1,38 @@
-# learnbot
+# learnbot - (mongoDB based)
 A chatbot system that will help in university managment
+Note: This branch is using mongodb as a database. The master branch is using C++ data structures (Trees and hash tables, and mostly does everything in memory. Thus, it is faster, but RAM hungry :))
 
 ## Description
 This is a smart and intuitive assistant which is aimed to help to both the students and instructors. With the help of short commands users can do several complex operation, such as creating a course, adding students, adding homework, grading homework, getting grades, reminders, etc... 
 Currentlty the learnbot is aimed for American University of Armenia (AUA), thus it may be uncomfortable to use in other institutins. Nevertheless, we are ready to collaborate with people who will try to adapt leanbot for their organizations as well. 
+1. Create new Slack workspace.
+2. Create new bot and obtain its token (more on that https://api.slack.com/bot-users)
+3. Install mongodb, nodjs and npm
+4. Clone repository from github.
+5. `cd` to the local repo.
+6. `git checkout learnbot-mongodb`
+7. `npm install`
+8. `mkdir data`
+9. `run` mongodb process and `set --dbpath to ./data (mongod --dbpath=./data works for me)` and leave the process running
+10. `token=[YOUR_TOKEN] node (or nodejs) bot.js`
 
-## Version notes
-Currently the app doesn't have a fully functional working version. Server (C++) and bot (node.js, botkit framework) are working separately. 
+If you did everything correctly, now your bot should be up on your slack workspace.
 
-## Building notes
-Since the app hasn't still a release version and bot works separately from the c++ server, building is a bit of complicated process. for running the bot part you need to run `bot.js` with node and give your slack bot token wither as enviromental variable or hardcode in code.
+## Functionality
+### Commands  
+__who am i__ : returns your information  
+__set privilege for \[user\] to \[admin\]__ : Changes the role of te student (must be run by admin)  
+__create course with id \[course id\] with name \[course name\]__ : creates course by given course name (must be run by admin)  
+__set instructor \[instructor name\] for course with id \[course id\]__ : stes instructor for a course (must be run by admin)  
+__register for course with id \[course id\]__ : registers for a course (student)  
+__set assignment with name \[assignment name\] with deadline \[deadline\] for \[course id\]__ : assignes an assignement (Instructor, student(TA))  
+__set grade for assignment \[assignement name\] for student \[student username\] of course \[course id\]__ : grades an assignement (Instructor, student(TA))  
 
-For testing the C++ part, you have to compile `main.cpp` with g++/gcc and also provide paths to other files. in server directory run 
-```
-$ g++ main.cpp -o server server.cpp student.cpp user.cpp course.cpp ../data_structures/BinSearchTree/BinSearchTree.cpp ../data_structures/HashTable/HashTable.cpp
-$ ./server
-```
+More commands are coming...
 
-_(A better testing variant will be added soon)_
+## Authors
+
+Grigor Bezirganyan
+Tigran Sedrakayan
+Hovhannes Margaryan
+Nana Sahakyan
